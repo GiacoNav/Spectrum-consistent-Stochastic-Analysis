@@ -6,7 +6,7 @@ function [strout] = GMA(Me,Ce,Ke,tau,Rt,fls)
 % Me, Ce, Ke: (nxn) mass, damping and stiffness matrices, respectively;
 % tau :       (nx1) location vector;
 % Rt :        (sxn) tranformation matrix for the definition of the output quantities of interest;
-% fls :        flag sismica [0] la forzante è applicata ai nodi; [1] la forzante è sismica  (capire se mantenere)
+% fls :        flag sismica [0] la forzante Ã¨ applicata ai nodi; [1] la forzante Ã¨ sismica  (capire se mantenere)
 % 
 % Output:
 % strout: data structure containing the following fields:
@@ -15,9 +15,9 @@ function [strout] = GMA(Me,Ce,Ke,tau,Rt,fls)
 %             ws:  (nx1) vector of natural frequencies of modal oscillators;
 %             zs:  (nx1) vector of damping of modal oscillators;
 %             wds: (nx1) vectot of damped frequecies of the modal oscillators;
-%             CCC: (sxnxn) hypermatrix of the C_r,ik modal combination coefficient; 
-%             DDD: (sxnxn) hypermatrix of the D_r,ik modal combination coefficient; 
-%             EEE: (sxnxn) hypermatrix of the E_r,ik modal combination coefficient; 
+%             Cij: (sxnxn) hypermatrix of the C_r,ik modal combination coefficient; 
+%             Dij: (sxnxn) hypermatrix of the D_r,ik modal combination coefficient; 
+%             Eij: (sxnxn) hypermatrix of the E_r,ik modal combination coefficient; 
 
 % common parameters
 n=size(Me,2); 
