@@ -1,4 +1,4 @@
-function [Gm,ex] = RS2PSD(S0,a0,TT,z,ts)
+function strPSD = RS2PSD(S0,a0,TT,z,ts)
 % Function for the evaluation of the parameters of a PSD function consistent
 % with an assigned Response Spectrum (RS)
 % 
@@ -10,8 +10,11 @@ function [Gm,ex] = RS2PSD(S0,a0,TT,z,ts)
 % ts:  the length of the time-window in which the earthquake can be assumed as stationary (i.e. ts=20 s)
 % 
 % Output: 
-% Gm: the peak value of PSD function at w=2*pi/T2
-% ex: a (4x1) containing the exponents of the PSD model
+% strPSD: data structure that defins the RS-consistent PSD function and 
+%         containing the following fields:
+%         Gm: the peak value of PSD function at w=2*pi/T2
+%         wx: a (3x1) vector of the circular frequencies delimitating the branches of the PSD function  
+%         ex: a (4x1) vector of the exponents of the PSD model
 
 % common parameters
 kkk=[1 2]; % shape factors of the RS
@@ -27,6 +30,10 @@ ex(3)=-1-l0-u12*elle(ww(2),z,ts);
 u123=(ww(2)/ww(1))^(1+ex(3))*u12+(1-(ww(2)/ww(1))^(1+ex(3)))*(l0+ex(3)+1)/(ex(3)+1);
 ex(4)=-1-l0-u123*(elle(ww(1),z,ts)+2*(a0-1)/a0);
 Gm=l0/(ww(2)*u12)*(a0*S0/eta0(ww(2),z,ts))^2;
+% building the output data structure
+strPSD.Gm=Gm;
+strPSD.wx=ww;
+strPSD.ex=ex;
 end
 
 % function L(w)

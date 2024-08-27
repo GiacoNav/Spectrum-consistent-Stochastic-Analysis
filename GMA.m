@@ -6,7 +6,7 @@ function [strout] = GMA(Me,Ce,Ke,tau,Rt,fls)
 % Me, Ce, Ke: (nxn) mass, damping and stiffness matrices, respectively;
 % tau :       (nx1) location vector;
 % Rt :        (sxn) tranformation matrix for the definition of the output quantities of interest;
-% fls :        flag sismica [0] la forzante Ã¨ applicata ai nodi; [1] la forzante Ã¨ sismica  (capire se mantenere)
+% fls :        flag sismica [0] la forzante è applicata ai nodi; [1] la forzante è sismica  (capire se mantenere)
 % 
 % Output:
 % strout: data structure containing the following fields:
