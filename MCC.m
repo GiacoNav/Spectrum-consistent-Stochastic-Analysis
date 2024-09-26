@@ -1,4 +1,4 @@
-function [strout] = GMA(Me,Ce,Ke,tau,fls)
+function cc=MCC(Me,Ce,Ke,strout,Rt)
 % Function for the execution of the Generalised Modal Analysis and for the  
 % evaluation of the modal correlation coefficients
 %
@@ -19,37 +19,39 @@ function [strout] = GMA(Me,Ce,Ke,tau,fls)
 %             Dij: (sxnxn) hypermatrix of the D_r,ik modal combination coefficient; 
 %             Eij: (sxnxn) hypermatrix of the E_r,ik modal combination coefficient; 
 
-% common parameters
-n=size(Me,2); 
-% system matrices in the state-variable form 
-A=[-Ke, 0*eye(n) ; 0*eye(n) , Me];
-B=[0*eye(n), -Ke ; -Ke, Ce];
-% location vector 
-if fls==0, V=[zeros(n,1) ; tau]; end
-if fls==1, V=[0*eye(n) ; eye(n)]*Me*tau; end
-G=A\V;  
-D=A\B;
-% Generalised modal analysis
-[Fi,Gam]=eig(-D);
-P=Fi\G;
-w0=abs(diag(Gam));
-z=-real(diag(Gam))./w0;
-% sorting of modal quantities
-ib=1:2:2*n;  % to be automated
-Gs=diag(Gam); Gs=Gs(ib);
-ws=w0(ib); zs=z(ib); wds=ws.*sqrt(1-zs.^2);
-Fs=Fi(1:n,ib);
-Ps=P(ib);
-% sorting of the modes in ascending order 
-[ws,is]=sort(ws,'ascend');
-zs=zs(is); Gs=Gs(is); wds=wds(is);
-Ps=-Ps(is); Fs=Fs(:,is);
-% building of the output data structure 
-strout.Gs=Gs;
-strout.Fs=Fs;
-strout.ws=ws;
-strout.zs=zs;
-strout.wds=wds;
-strout.Ps=Ps;
+% Retrieving of the modal information
+Ps=strout.Ps;
+Fs=strout.Fs;
+s=size(Rt,1);
+Gs=strout.Gs;
+n=length(Ps);
+% Evaluation of the modal combinaton coefficients 
+BB=Rt*Fs*diag(Ps);
+AA=-2*real(BB*conj(diag(Gs)));
+CC=2*real(BB);
+% evaluation of the coefficient matrices 
+CCC=zeros(s,n,n); DDD=CCC; EEE=CCC;  % initialization
+for d=1:s
+    for i=1:n
+        for j=1:n
+            CCC(d,i,j)=AA(d,i)*AA(d,j);
+            DDD(d,i,j)=AA(d,i)*CC(d,j)-AA(d,j)*CC(d,i);
+            EEE(d,i,j)=CC(d,i)*CC(d,j);
+        end
+    end
 end
+% check if the structural system is a clasically damped one
+[phi,~]=eig(Me,Ke);
+ll=phi'*Ce*phi;
+lld=ll-diag(diag(ll));
+ff=max(max(lld));
+if ff<1e-6
+    DDD=zeros(s,n,n);
+    EEE=DDD;
+end
+clear phi ll lld ff
 
+cc.Cij=CCC;
+cc.Dij=DDD;
+cc.Eij=EEE;
+end

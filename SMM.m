@@ -1,4 +1,4 @@
-function Momjk = SMM(strPSD,strout,flcr)
+function [Momjk,lamy] = SMM(strPSD,strout,cc,flcr)
 % Evaluation of the spectral moment matrices in modal space for 
 % RS-consistent seismic load.
 % 
@@ -21,55 +21,57 @@ function Momjk = SMM(strPSD,strout,flcr)
 %         in modal space, or for the calculation of the cross spectral moments too (flcr=1) 
 % 
 % Output:
-% Momjk:  (5xnxn) cross spectral moments hypermatrix, containing the entries Momjk(m,j,k)
+% Momjk:  (5xnxnx2) cross spectral moments hypermatrix, containing the entries Momjk(m,j,k)
 %         that is the cross spectral moment of order (m-1) between the j-th 
-%         and k-th modal oscillators 
+%         and k-th modal oscillators. The last dimension is for real (1) and imaginary (2) parts.
+% lamy:   (sx5) matrix of the spectral moments of the quantity of interest 
 %
 % NB: in this revision the function only computes the real part of the even-order  
 % spectral moments and the imaginary part of the odd-order spectral moments, 
 % since these elements are useful to calculate the even-order cross spectral moments
-% whose physical meaning is related to the varince of the displacements and velocieites
-% in the geometrical space.
+% whose physical meaning is related to the varince of the displacements and velocities
+% in the geometrical space. In the next version all the element calculation
+% will be implemented
 
 % common parameters
 ws=strout.ws; wds=strout.wds; zs=strout.zs; 
 N=length(ws);
 if flcr==1; end
-al=zeros(5,N,N); be=al; ga=al; de=al; lam_ii=zeros(2,N); Momjk=zeros(5,N,N);
+al=zeros(9,N,N); be=al; ga=al; de=al; ep=al;
+lam_ii=zeros(4,N); Momjk=zeros(5,N,N,2);
 Kjkmat=zeros(N,N); 
-wx=strPSD.wx;
+wx=flipud(strPSD.wx);
 ex=strPSD.ex;
 G0=strPSD.Gm;
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 for j=1:N
     % calculation of modal direct spectral moments
-    % in this revision we calculate only m=0 e m=2 moments since they allow for 
-    % the estimaton of the variances of the response in terms of displacements and velocity 
     %
     % determinaton of the branch
     if ws(j)<wx(1), kb=1; end
     if (ws(j)>=wx(1)&&ws(j)<wx(2)), kb=2; end
     if (ws(j)>=wx(2)&&ws(j)<wx(3)), kb=3; end
     if (ws(j)>=wx(3)), kb=4; end
-    for im=1:2
-        switch im
-            case 1,m=0; 
-            case 2,m=2;
-        end
-        lam_ii(im,j)=PSDSC(ws(j),G0,ex,wx)/(4*zs(j)*ws(j)^(3-m))*fi_mk(m,kb,zs(j),ex);
+    % evaluation of direct modal spectral moments by analytical formulation
+    for m=0:3  %(m is the momnet order)
+        lam_ii(m+1,j)=PSDSC(ws(j),G0,ex,wx)/(4*zs(j)*ws(j)^(3-m))*fi_mk(m,kb,zs(j),ex);
         for i=1:(kb-1)
-            lam_ii(im,j)=lam_ii(im,j)+(1/ws(j)^4)*PSDSC(wx(i),G0,ex,wx)*wx(i)^(m+1)*gamma_mk(m,i,ex);
+            lam_ii(m+1,j)=lam_ii(m+1,j)+(1/ws(j)^4)*PSDSC(wx(i),G0,ex,wx)*wx(i)^(m+1)*gamma_mk(m,i,ex);
         end
     end
-    % computation of the coefficient matrices for the evaluation of the per
+end        
+ % computation of the coefficient matrices for the evaluation of the per
     % cross modal spectral moments
+for j=1:N
     for k=1:N
         Kjk=(ws(j)^2-ws(k)^2)^2+4*zs(j)*zs(k)*(ws(j)^2+ws(k)^2)*ws(j)*ws(k)+4*(zs(j)^2+zs(k)^2)*ws(j)^2*ws(k)^2;
         Kjkmat(j,k)=Kjk;
-        for r=1:5
+        for r=1:9
             if r==1 % level m=0                
                 al(1,j,k)=4*(zs(j)*ws(j)+zs(k)*ws(k))/Kjk;
-                be(1,j,k)=2*(ws(j)^2-ws(k)^2+2*zs(j)*zs(k)*ws(j)*ws(k)+2*zs(k)^2*ws(k)^2)/(ws(k)*Kjk);
+                be(1,j,k)=2*(ws(j)^2-ws(k)^2+2*zs(j)*zs(k)*ws(j)*ws(k)+2*zs(k)^2*ws(k)^2)/(wds(k)*Kjk);
             end
             if r>1 % recursive calculation
                 al(r,j,k)=-zs(k)*ws(k)*al(r-1,j,k)+wds(k)*be(r-1,j,k);
@@ -77,23 +79,64 @@ for j=1:N
             end
             ga(r,j,k)=al(r,j,k)*zs(k)*ws(k)+be(r,j,k)*wds(k);
             de(r,j,k)=al(r,j,k)*zs(k)*ws(k)-be(r,j,k)*wds(k);
+            ep(r,j,k)=2*be(r,j,k)*zs(k)*ws(k)*wds(k)+al(r,j,k)*(ws(k)^2-2*wds(k)^2);
         end
     end
-end
-% evaluation of the cross modal spectral moments
+end        
+       
+
+% evaluation of the cross modal spectral moments 
 for j=1:N
     for k=1:N
-        for r=1:5
+        for r=1:7  % max 7 in order to have moment order up to 4 (e.g. r=1 -> m=0)
+            
             switch mod(r,2)
-                case 1 % Re[lam_0,jk], Re[lam_2,jk], Re[lam_4,jk]
-                    Momjk(r,j,k)=(-1)^((r-1)/2)*(lam_ii(1,j)*ga(r,k,j)*ws(j)^2+lam_ii(2,j)*de(r,k,j)+lam_ii(1,k)*ga(r,j,k)*ws(k)^2+lam_ii(2,k)*de(r,j,k))/2;
-                case 0 % Im[lam_1,jk], Im[lam_3,jk]
-                    Momjk(r,j,k)=(-1)^((r-2)/2)*(lam_ii(1,j)*ga(r,k,j)*ws(j)^2+lam_ii(2,j)*de(r,k,j)-lam_ii(1,k)*ga(r,j,k)*ws(k)^2-lam_ii(2,k)*de(r,j,k))/2;
+                case 1 % even-order moments (r is odd, m is even)
+                    % real part
+                    Momjk(r,j,k,1)=0.5*(-1)^((r-1)/2)*(lam_ii(1,j)*ga(r,k,j)*ws(j)^2+lam_ii(3,j)*de(r,k,j)+lam_ii(1,k)*ga(r,j,k)*ws(k)^2+lam_ii(3,k)*de(r,j,k));
+                    % imaginary part 
+                    Momjk(r,j,k,2)=0.5*(-1)^((r-1)/2)*(lam_ii(2,j)*ep(r,k,j)-lam_ii(2,k)*ep(r,j,k)+lam_ii(4,j)*al(r,j,k)-lam_ii(4,k)*al(r,k,j));
+                case 0 % odd-order moments (r is even, m is odd) 
+                    % real part
+                    Momjk(r,j,k,1)=-0.5*(-1)^((r+2)/2)*(lam_ii(2,j)*ep(r,k,j)+lam_ii(2,k)*ep(r,j,k)+lam_ii(4,j)*al(r,k,j)+lam_ii(4,k)*al(r,j,k));
+                    % imaginary part 
+                    Momjk(r,j,k,2)=-0.5*(-1)^((r+2)/2)*(lam_ii(1,j)*ga(r,k,j)*ws(j)^2+lam_ii(3,j)*de(r,k,j)-lam_ii(1,k)*ga(r,j,k)*ws(k)^2-lam_ii(3,k)*de(r,j,k));
             end
         end
     end
 end
+ 
 
+
+
+
+
+% Evaluation of the spectral moment of the quantity of interest in the geometrical space
+s=size(cc.Cij,1);
+CCC=cc.Cij;
+DDD=cc.Dij;
+EEE=cc.Eij;
+lamy=zeros(s,5);
+for i=1:s
+    for r=1:5
+        lamy(i,r)=sum(sum(squeeze(CCC(i,:,:)).*squeeze(Momjk(r,:,:,1))))-sum(sum(squeeze(DDD(i,:,:)).*squeeze(Momjk(r+1,:,:,2))))+sum(sum(squeeze(EEE(i,:,:)).*squeeze(Momjk(r+2,:,:,1))));
+    end
+end
 
 end
+
+function gmk=gamma_mk(m,k,ex)
+%Funzione gamma(m,k) per momento spettrale diretto
+gmk=(ex(k+1)-ex(k))/((1+m+ex(k+1))*(1+m+ex(k)));
+end
+
+function fmk = fi_mk(m,k,z,ex)
+%Funzione fi(m,k) per la definizione del momento spettrale modale diretto
+ee=0;
+if (m==0||m==2), ee=ex(k); end
+if (m==1), ee=2+2*ex(k); end
+if (m==3), ee=8+3*ex(k); end
+fmk=pi-(4*z)/((m+1+ex(k))*(1+m))*ee;
+end
+
 
